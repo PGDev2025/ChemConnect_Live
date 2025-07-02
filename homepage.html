@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemConnect - Chemical & Equipment Exchange for Colleges</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 50%, #3b82f6 100%);
+        }
+        .flask-icon {
+            position: relative;
+        }
+        .flask-icon::before {
+            content: "";
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            top: -10px;
+            left: -10px;
+        }
+        .molecule-pattern {
+            background-image: radial-gradient(circle, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        /* Custom styles for active filter buttons */
+        .search-filter.active-chemical {
+            background-color: #3b82f6; /* blue-600 */
+            color: white;
+        }
+        .search-filter.active-equipment {
+            background-color: #10b981; /* green-600 */
+            color: white;
+        }
+        .search-filter.active-glassware {
+            background-color: #9333ea; /* purple-600 */
+            color: white;
+        }
+        .search-filter.active-other {
+            background-color: #eab308; /* yellow-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="font-sans molecule-pattern">
+    <script>
+        let currentUser = null; // Global variable to store current user
+
+        // IMPORTANT: Check login status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const userString = localStorage.getItem('chemconnect_current_user');
+            if (!userString) {
+                // If no user is logged in, redirect to login page
+                window.location.href = 'login.html';
+            } else {
+                currentUser = JSON.parse(userString); // Set global currentUser
+                // Display user's college name in the nav
+                const userDisplayElement = document.getElementById('user-college-name');
+                if (userDisplayElement) {
+                    userDisplayElement.textContent = currentUser.collegeName;
+                }
+                loadProfileData(); // Load profile data after user is confirmed
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('chemconnect_current_user');
+            window.location.href = 'login.html';
+        }
+
+        function loadProfileData() {
+            if (!currentUser) return; // Ensure currentUser is set
+
+            // Display User Details
+            document.getElementById('profileCollegeName').textContent = currentUser.collegeName;
+            document.getElementById('profileContactPerson').textContent = currentUser.contactPerson;
+            document.getElementById('profileDesignation').textContent = currentUser.designation;
+            document.getElementById('profileEmail').textContent = currentUser.email;
+            document.getElementById('profilePhone').textContent = currentUser.phoneNumber;
+            document.getElementById('profileAffiliation').textContent = currentUser.universityAffiliation;
+            document.getElementById('profileVerifiedStatus').textContent = currentUser.verified ? 'Verified' : 'Pending Verification';
+            document.getElementById('profileVerifiedStatus').classList.add(currentUser.verified ? 'text-green-600' : 'text-yellow-600');
+            document.getElementById('profileRegisteredAt').textContent = new Date(currentUser.registeredAt).toLocaleDateString();
+            document.getElementById('profileAdditionalInfo').textContent = currentUser.additionalInfo || 'N/A';
+
+
+            // Load My Requests
+            const myRequestsContainer = document.getElementById('myRequestsContainer');
+            myRequestsContainer.innerHTML = ''; // Clear previous content
+            const userRequests = JSON.parse(localStorage.getItem(`chemconnect_requests_${currentUser.id}`) || '[]');
+            
+            if (userRequests.length === 0) {
+                myRequestsContainer.innerHTML = '<p class="text-gray-600">You have not submitted any requests yet.</p>';
+            } else {
+                userRequests.forEach(req => {
+                    const requestDiv = document.createElement('div');
+                    requestDiv.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-200';
+                    requestDiv.innerHTML = `
+                        <h4 class="font-bold text-gray-800">${req.itemDetails}</h4>
+                        <p class="text-sm text-gray-600">Type: ${req.itemType.charAt(0).toUpperCase() + req.itemType.slice(1)} | Urgency: ${req.urgency.charAt(0).toUpperCase() + req.urgency.slice(1)}</p>
+                        <p class="text-sm text-gray-500">Submitted on: ${new Date(req.timestamp).toLocaleDateString()}</p>
+                    `;
+                    myRequestsContainer.appendChild(requestDiv);
+                });
+            }
+
+            // Load My Supply Listings
+            const mySuppliesContainer = document.getElementById('mySuppliesContainer');
+            mySuppliesContainer.innerHTML = ''; // Clear previous content
+            const userSupplies = JSON.parse(localStorage.getItem(`chemconnect_supplies_${currentUser.id}`) || '[]');
+
+            if (userSupplies.length === 0) {
+                mySuppliesContainer.innerHTML = '<p class="text-gray-600">You have not listed any items for supply yet.</p>';
+            } else {
+                userSupplies.forEach(sup => {
+                    const supplyDiv = document.createElement('div');
+                    supplyDiv.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-200';
+                    supplyDiv.innerHTML = `
+                        <h4 class="font-bold text-gray-800">${sup.itemDetails}</h4>
+                        <p class="text-sm text-gray-600">Type: ${sup.itemType.charAt(0).toUpperCase() + sup.itemType.slice(1)} | Price: ${sup.price === 'FREE' ? 'FREE' : '₹' + sup.price} | Location: ${sup.location}</p>
+                        <p class="text-sm text-gray-500">Listed on: ${new Date(sup.timestamp).toLocaleDateString()}</p>
+                    `;
+                    mySuppliesContainer.appendChild(supplyDiv);
+                });
+            }
+        }
+    </script>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <div class="flask-icon bg-blue-500 text-white p-3 rounded-full">
+                            <i class="fas fa-flask text-xl"></i>
+                        </div>
+                        <span class="ml-3 text-xl font-bold text-gray-800">ChemConnect</span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#home" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Home</a>
+                    <a href="#about" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">About</a>
+                    <a href="#request" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Request</a>
+                    <a href="#supply" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Supply</a>
+                    <a href="#search" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Search</a>
+                    <a href="#profile" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Profile</a>
+                    <a href="#contact" class="text-gray-800 hover:text-blue-600 px-3 py-2 font-medium">Contact</a>
+                    <span id="user-college-name" class="text-gray-700 font-semibold"></span>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-all">Logout</button>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-gray-800 hover:text-blue-600">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white shadow-lg">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#home" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Home</a>
+                <a href="#about" class="block px-3 py-2 text-gray-800 hover:text-blue-600">About</a>
+                <a href="#request" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Request</a>
+                <a href="#supply" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Supply</a>
+                <a href="#search" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Search</a>
+                <a href="#profile" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Profile</a>
+                <a href="#contact" class="block px-3 py-2 text-gray-800 hover:text-blue-600">Contact</a>
+                <button onclick="logout()" class="block w-full text-left px-3 py-2 text-red-600 hover:bg-red-100">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="gradient-bg text-white py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-6">Connecting Colleges Through Chemistry</h1>
+                    <p class="text-xl mb-8">A platform for colleges to exchange surplus chemicals and equipment at nominal costs, fostering collaboration and reducing waste.</p>
+                    <div class="flex space-x-4">
+                        <a href="#request" class="bg-white text-blue-600 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-all">Request Items</a>
+                        <a href="#supply" class="bg-transparent border-2 border-white hover:bg-white hover:text-blue-600 px-6 py-3 rounded-lg font-medium transition-all">Supply Items</a>
+                    </div>
+                </div>
+                <div class="md:w-1/2 flex justify-center">
+                    <div class="relative">
+                        <div class="absolute -top-10 -left-10 w-32 h-32 bg-blue-400 rounded-full opacity-20"></div>
+                        <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-green-400 rounded-full opacity-20"></div>
+                        <img src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" 
+                             alt="Chemistry lab equipment" 
+                             class="rounded-lg shadow-2xl w-full max-w-md border-8 border-white">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="bg-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">150+</div>
+                    <div class="text-gray-600">Colleges Connected</div>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="text-4xl font-bold text-green-600 mb-2">2,500+</div>
+                    <div class="text-gray-600">Transactions Completed</div>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="text-4xl font-bold text-purple-600 mb-2">₹5M+</div>
+                    <div class="text-gray-600">Saved by Colleges</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Our Mission</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Bridging the gap between surplus and need in academic chemistry labs across India.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-lg shadow-md card-hover transition-all">
+                    <div class="text-blue-500 mb-4">
+                        <i class="fas fa-exchange-alt text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Resource Sharing</h3>
+                    <p class="text-gray-600">Colleges can share surplus chemicals and equipment with other institutions that need them, reducing waste and costs.</p>
+                </div>
+                <div class="bg-white p-8 rounded-lg shadow-md card-hover transition-all">
+                    <div class="text-green-500 mb-4">
+                        <i class="fas fa-rupee-sign text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Cost Effective</h3>
+                    <p class="text-gray-600">Get the materials you need at nominal costs, significantly lower than market prices, while helping other institutions.</p>
+                </div>
+                <div class="bg-white p-8 rounded-lg shadow-md card-hover transition-all">
+                    <div class="text-purple-500 mb-4">
+                        <i class="fas fa-network-wired text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Network Building</h3>
+                    <p class="text-gray-600">Connect with chemistry departments across India, fostering collaboration and knowledge exchange beyond just materials.</p>
+                </div>
+            </div>
+            
+            <div class="mt-16 bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="md:flex">
+                    <div class="md:w-1/2 p-8 md:p-12">
+                        <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+                        <div class="space-y-6">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-100 text-blue-600 rounded-full p-2 mr-4">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">1. Search or List</h4>
+                                    <p class="text-gray-600 mt-1">Browse available items or list what you have to offer.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-green-100 text-green-600 rounded-full p-2 mr-4">
+                                    <i class="fas fa-handshake"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">2. Connect</h4>
+                                    <p class="text-gray-600 mt-1">Our platform connects you with verified colleges.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-purple-100 text-purple-600 rounded-full p-2 mr-4">
+                                    <i class="fas fa-truck"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">3. Arrange Logistics</h4>
+                                    <p class="text-gray-600 mt-1">Coordinate pickup/delivery with our logistics partners.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-yellow-100 text-yellow-600 rounded-full p-2 mr-4">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">4. Complete Transaction</h4>
+                                    <p class="text-gray-600 mt-1">Secure payment processing ensures smooth transactions.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2">
+                        <img src="https://tse1.mm.bing.net/th/id/OIP.XRE12zk6MPidHciDK-PTCgHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3" 
+                             alt="Chemistry students working" 
+                             class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Request Section -->
+    <section id="request" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Request Chemicals or Equipment</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Fill out this form to request items you need for your college's chemistry department.</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg shadow-md p-8 max-w-4xl mx-auto">
+                <form id="requestForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="collegeName" class="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+                            <input type="text" id="collegeName" name="collegeName" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="contactPerson" class="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                            <input type="text" id="contactPerson" name="contactPerson" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="email" name="email" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="itemType" class="block text-sm font-medium text-gray-700 mb-1">Item Type</label>
+                        <select id="itemType" name="itemType" required 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select item type</option>
+                            <option value="chemical">Chemical</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="glassware">Glassware</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="itemDetails" class="block text-sm font-medium text-gray-700 mb-1">Item Details</label>
+                        <textarea id="itemDetails" name="itemDetails" rows="3" required 
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                  placeholder="Please provide detailed information about the item you're requesting (name, quantity, grade, specifications, etc.)"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="urgency" class="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
+                        <select id="urgency" name="urgency" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="low">Low (can wait 1+ months)</option>
+                            <option value="medium">Medium (needed within 2-4 weeks)</option>
+                            <option value="high">High (needed within 1 week)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input id="termsAgreement" name="termsAgreement" type="checkbox" required 
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="termsAgreement" class="ml-2 block text-sm text-gray-700">
+                            I agree to the <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and understand that this is a request that will be matched with potential suppliers.
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all">
+                            Submit Request
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="requestSuccess" class="hidden mt-6 p-4 bg-blue-100 text-blue-700 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span>Your request has been submitted successfully! We'll contact you with potential matches soon.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Supply Section -->
+    <section id="supply" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Supply Chemicals or Equipment</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">List surplus items your college has available to help other institutions in need.</p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-8 max-w-4xl mx-auto">
+                <form id="supplyForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="supplyCollegeName" class="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+                            <input type="text" id="supplyCollegeName" name="collegeName" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="supplyContactPerson" class="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                            <input type="text" id="supplyContactPerson" name="contactPerson" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="supplyEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="supplyEmail" name="email" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="supplyPhone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input type="tel" id="supplyPhone" name="phone" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="supplyItemType" class="block text-sm font-medium text-gray-700 mb-1">Item Type</label>
+                        <select id="supplyItemType" name="itemType" required 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select item type</option>
+                            <option value="chemical">Chemical</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="glassware">Glassware</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="supplyItemDetails" class="block text-sm font-medium text-gray-700 mb-1">Item Details</label>
+                        <textarea id="supplyItemDetails" name="itemDetails" rows="3" required 
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                  placeholder="Please provide detailed information about the item you're offering (name, quantity, grade, specifications, condition, etc.)"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="supplyPrice" class="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+                        <input type="number" id="supplyPrice" name="price" min="0" step="0.01" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                               placeholder="Enter nominal price (leave 0 for free)">
+                    </div>
+                    
+                    <div>
+                        <label for="supplyLocation" class="block text-sm font-medium text-gray-700 mb-1">Location (City)</label>
+                        <input type="text" id="supplyLocation" name="location" required 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input id="supplyTermsAgreement" name="termsAgreement" type="checkbox" required 
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="supplyTermsAgreement" class="ml-2 block text-sm text-gray-700">
+                            I agree to the <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and confirm that all listed items are in good condition and properly labeled.
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <button type="submit" 
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-all">
+                            List Item for Supply
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="supplySuccess" class="hidden mt-6 p-4 bg-green-100 text-green-700 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span>Your item has been listed successfully! We'll notify you when there are interested colleges.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search Section -->
+    <section id="search" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Search Available Items</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Find chemicals and equipment available from other colleges.</p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="relative mb-8">
+                    <input type="text" id="searchInput" placeholder="Search for chemicals, equipment, glassware..." 
+                           class="w-full px-6 py-4 border border-gray-300 rounded-full shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <button id="searchButton" class="absolute right-2 top-2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-all">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                
+                <div class="flex flex-wrap gap-4 mb-8">
+                    <button class="search-filter px-4 py-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-all" data-type="chemical">
+                        <i class="fas fa-prescription-bottle mr-2"></i>Chemicals
+                    </button>
+                    <button class="search-filter px-4 py-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-all" data-type="equipment">
+                        <i class="fas fa-microscope mr-2"></i>Equipment
+                    </button>
+                    <button class="search-filter px-4 py-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-all" data-type="glassware">
+                        <i class="fas fa-flask mr-2"></i>Glassware
+                    </button>
+                    <button class="search-filter px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-all" data-type="other">
+                        <i class="fas fa-box-open mr-2"></i>Other
+                    </button>
+                </div>
+                
+                <div id="searchResults" class="space-y-6">
+                    <!-- Static Sample results -->
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200" data-item-type="chemical" data-supplier="HBTU Kanpur">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Sodium Hydroxide (NaOH) - 5kg</h3>
+                                <p class="text-gray-600">ACS Reagent Grade, unopened container</p>
+                            </div>
+                            <div class="mt-2 md:mt-0 text-right">
+                                <span class="text-lg font-bold text-green-600">₹1,200</span>
+                                <p class="text-sm text-gray-500">HBTU Kanpur</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Chemical</span>
+                            <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">New</span>
+                        </div>
+                        <a href="supplier_contact.html?supplier=HBTU Kanpur&item=Sodium Hydroxide (NaOH) - 5kg" class="mt-4 text-blue-600 hover:text-blue-800 font-medium">Contact Supplier</a>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200" data-item-type="equipment" data-supplier="IIT Kanpur">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">UV-Vis Spectrophotometer</h3>
+                                <p class="text-gray-600">Used but well-maintained, includes cuvette set</p>
+                            </div>
+                            <div class="mt-2 md:mt-0 text-right">
+                                <span class="text-lg font-bold text-green-600">₹25,000</span>
+                                <p class="text-sm text-gray-500">IIT Kanpur</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Equipment</span>
+                            <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">Used</span>
+                        </div>
+                        <a href="supplier_contact.html?supplier=IIT Kanpur&item=UV-Vis Spectrophotometer" class="mt-4 text-blue-600 hover:text-blue-800 font-medium">Contact Supplier</a>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200" data-item-type="glassware" data-supplier="PSIT Kanpur">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Glassware Set</h3>
+                                <p class="text-gray-600">Various beakers, flasks, and test tubes - 25 pieces total</p>
+                            </div>
+                            <div class="mt-2 md:mt-0 text-right">
+                                <span class="text-lg font-bold text-green-600">Free</span>
+                                <p class="text-sm text-gray-500">PSIT Kanpur</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Glassware</span>
+                            <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">Used</span>
+                        </div>
+                        <a href="supplier_contact.html?supplier=PSIT Kanpur&item=Glassware Set" class="mt-4 text-blue-600 hover:text-blue-800 font-medium">Contact Supplier</a>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200" data-item-type="equipment" data-supplier="IIT Kanpur">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Transmission Electron Microscope</h3>
+                                <p class="text-gray-600">Used in material science,in nanotechnology.Prices due to operational charges charged on a weekly basis</p>
+                            </div>
+                            <div class="mt-2 md:mt-0 text-right">
+                                <span class="text-lg font-bold text-green-600">₹12,000 per week</span>
+                                <p class="text-sm text-gray-500">IIT Kanpur</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-red-100 text-red-700 text-sm rounded-full">Sharing</span>
+                            <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">Weekly Basis</span>
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Equipment</span>
+                            <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">Used</span>
+                        </div>
+                        <a href="supplier_contact.html?supplier=IIT Kanpur&item=Transmission Electron Microscope" class="mt-4 text-blue-600 hover:text-blue-800 font-medium">Contact Supplier</a>
+                    </div>
+                    <div id="dynamicItemsContainer" class="space-y-6">
+                        <!-- Dynamically added supply items will appear here -->
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center">
+                    <button id="loadMoreButton" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all">
+                        Load More Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Profile Section -->
+    <section id="profile" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">My Profile & History</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">View your college details, submitted requests, and listed supply items.</p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8 space-y-8">
+                <!-- User Details -->
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">My College Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+                        <div><strong class="text-gray-900">College Name:</strong> <span id="profileCollegeName"></span></div>
+                        <div><strong class="text-gray-900">Contact Person:</strong> <span id="profileContactPerson"></span></div>
+                        <div><strong class="text-gray-900">Designation:</strong> <span id="profileDesignation"></span></div>
+                        <div><strong class="text-gray-900">Email:</strong> <span id="profileEmail"></span></div>
+                        <div><strong class="text-gray-900">Phone:</strong> <span id="profilePhone"></span></div>
+                        <div><strong class="text-gray-900">Affiliation:</strong> <span id="profileAffiliation"></span></div>
+                        <div><strong class="text-gray-900">Registered On:</strong> <span id="profileRegisteredAt"></span></div>
+                        <div><strong class="text-gray-900">Verification Status:</strong> <span id="profileVerifiedStatus" class="font-semibold"></span></div>
+                        <div class="md:col-span-2"><strong class="text-gray-900">Additional Info:</strong> <span id="profileAdditionalInfo"></span></div>
+                    </div>
+                </div>
+
+                <!-- My Requests -->
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">My Requests</h3>
+                    <div id="myRequestsContainer" class="space-y-4">
+                        <!-- Requests will be loaded here by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- My Supply Listings -->
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">My Supply Listings</h3>
+                    <div id="mySuppliesContainer" class="space-y-4">
+                        <!-- Supply listings will be loaded here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">What Colleges Are Saying</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Hear from institutions that have benefited from our platform.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 mr-2">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"We saved over ₹50,000 last semester by acquiring surplus chemicals through ChemConnect instead of buying new. The quality was excellent and the process was seamless."</p>
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 text-blue-600 rounded-full w-12 h-12 flex items-center justify-center mr-4">
+                            <span class="font-bold">AK</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold">Dr. Anil Kumar</h4>
+                            <p class="text-gray-500 text-sm">Head of Chemistry, Delhi University</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 mr-2">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"Our old spectrophotometer found a new home at a smaller college that couldn't afford a new one. We recovered some costs and helped another institution - win-win!"</p>
+                    <div class="flex items-center">
+                        <div class="bg-green-100 text-green-600 rounded-full w-12 h-12 flex items-center justify-center mr-4">
+                            <span class="font-bold">SP</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold">Prof. Sunita Patel</h4>
+                            <p class="text-gray-500 text-sm">Chemistry Department, IIT Bombay</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 mr-2">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"As a small private college, this platform has been invaluable for getting quality equipment at affordable prices. We've also made great connections with larger institutions."</p>
+                    <div class="flex items-center">
+                        <div class="bg-purple-100 text-purple-600 rounded-full w-12 h-12 flex items-center justify-center mr-4">
+                            <span class="font-bold">RM</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold">Dr. Ramesh Mehta</h4>
+                            <p class="text-gray-500 text-sm">Principal, St. Xavier's College</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Get in Touch</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Have questions or need support? Reach out to us!</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg shadow-lg overflow-hidden max-w-5xl mx-auto">
+                <div class="md:flex">
+                    <form id="contactForm" class="space-y-6 p-8 md:p-12 md:w-1/2">
+
+                        <!-- Name -->
+                        <div>
+                            <label for="contactName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input type="text" id="contactName" name="name" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="contactEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="contactEmail" name="email" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- College -->
+                        <div>
+                            <label for="contactCollege" class="block text-sm font-medium text-gray-700 mb-1">College/Institution</label>
+                            <input type="text" id="contactCollege" name="college" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Subject -->
+                        <div>
+                            <label for="contactSubject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                            <select id="contactSubject" name="subject" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="general">General Inquiry</option>
+                                <option value="partnership">Partnership Opportunity</option>
+                                <option value="technical">Technical Support</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <!-- Message -->
+                        <div>
+                            <label for="contactMessage" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                            <textarea id="contactMessage" name="message" rows="4" required 
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+
+                        <!-- Submit -->
+                        <div>
+                            <button type="submit" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all">
+                                Send Message
+                            </button>
+                        </div>
+
+                        <div id="contactSuccess" class="hidden mt-6 p-4 bg-yellow-100 text-yellow-700 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                <span>Thank you! We've received your message and will contact you as soon as possible.</span>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <div class="md:w-1/2 bg-blue-600 text-white p-8 md:p-12">
+                        <h3 class="text-2xl font-bold mb-6">Other Ways to Reach Us</h3>
+                        
+                        <div class="space-y-6">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-500 text-white rounded-full p-3 mr-4">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold mb-1">Email</h4>
+                                    <p>contact@ChemConnect.com</p>
+                                    <p>support@ChemConnect.com</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-500 text-white rounded-full p-3 mr-4">
+                                    <i class="fas fa-phone-alt"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold mb-1">Phone</h4>
+                                    <p>+91 98765 43210 (Support)</p>
+                                    <p>+91 98765 43211 (Partnerships)</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-500 text-white rounded-full p-3 mr-4">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold mb-1">Office</h4>
+                                    <p>Harcourt Butler Technical University</p>
+                                    <p>Kanpur, Uttar Pradesh 208002</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-500 text-white rounded-full p-3 mr-4">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold mb-1">Hours</h4>
+                                    <p>Monday - Friday: 9:00 AM - 5:00 PM</p>
+                                    <p>Saturday: 10:00 AM - 2:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h4 class="font-bold mb-4">Follow Us</h4>
+                            <div class="flex space-x-4">
+                                <a href="#" class="bg-blue-500 text-white hover:bg-blue-400 rounded-full w-10 h-10 flex items-center justify-center transition-all">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                <a href="#" class="bg-blue-500 text-white hover:bg-blue-400 rounded-full w-10 h-10 flex items-center justify-center transition-all">
+                                    <i class="fab fa-linkedin-in"></i>
+                                </a>
+                                <a href="#" class="bg-blue-500 text-white hover:bg-blue-400 rounded-full w-10 h-10 flex items-center justify-center transition-all">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                                <a href="#" class="bg-blue-500 text-white hover:bg-blue-400 rounded-full w-10 h-10 flex items-center justify-center transition-all">
+                                    <i class="fab fa-instagram"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Frequently Asked Questions</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Find answers to common questions about our platform.</p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="divide-y divide-gray-200">
+                        <div class="faq-item">
+                            <button class="faq-question w-full px-6 py-4 text-left hover:bg-gray-50 transition-all flex justify-between items-center">
+                                <span class="font-medium text-lg">How does the pricing work for items?</span>
+                                <i class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div class="faq-answer px-6 py-4 hidden">
+                                <p class="text-gray-600">Suppliers set their own prices, which are typically much lower than market rates (often just 10-30% of original cost). Some items may even be offered for free. Our platform encourages nominal pricing to cover costs rather than generate profit, keeping the focus on resource sharing within the academic community.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <button class="faq-question w-full px-6 py-4 text-left hover:bg-gray-50 transition-all flex justify-between items-center">
+                                <span class="font-medium text-lg">How are hazardous materials handled?</span>
+                                <i class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div class="faq-answer px-6 py-4 hidden">
+                                <p class="text-gray-600">All hazardous materials must be properly labeled with SDS (Safety Data Sheets) included. We partner with certified chemical logistics providers who specialize in safe transport of hazardous materials. Both suppliers and requesters must confirm they have appropriate storage facilities before transacting with hazardous chemicals.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <button class="faq-question w-full px-6 py-4 text-left hover:bg-gray-50 transition-all flex justify-between items-center">
+                                <span class="font-medium text-lg">What's the verification process for colleges?</span>
+                                <i class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div class="faq-answer px-6 py-4 hidden">
+                                <p class="text-gray-600">We verify each college through official email domains, cross-checking with UGC/AICTE databases, and sometimes requiring documentation from department heads. This ensures all participants are legitimate academic institutions, maintaining trust and safety within our network.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <button class="faq-question w-full px-6 py-4 text-left hover:bg-gray-50 transition-all flex justify-between items-center">
+                                <span class="font-medium text-lg">Are there any fees for using the platform?</span>
+                                <i class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div class="faq-answer px-6 py-4 hidden">
+                                <p class="text-gray-600">Basic membership is free for all verified colleges. We charge a small service fee (5% of transaction value, capped at ₹1000) only on completed transactions to cover platform maintenance and development costs. There are never any listing fees or subscription charges.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <button class="faq-question w-full px-6 py-4 text-left hover:bg-gray-50 transition-all flex justify-between items-center">
+                                <span class="font-medium text-lg">How are disputes resolved?</span>
+                                <i class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div class="faq-answer px-6 py-4 hidden">
+                                <p class="text-gray-600">Our mediation team, consisting of experienced chemistry professors from various institutions, helps resolve any disputes about item condition, specifications, or delivery. We maintain escrow for payments until both parties confirm satisfactory completion of the transaction.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="py-20 gradient-bg text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold mb-6">Ready to Join Our Network?</h2>
+            <p class="text-xl mb-8 max-w-3xl mx-auto">Sign up today to start sharing resources with colleges across India and reduce your department's costs.</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#request" class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 rounded-lg font-medium text-lg transition-all">Request Items Now</a>
+                <a href="#supply" class="bg-transparent border-2 border-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-lg font-medium text-lg transition-all">List Your Surplus</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center mb-4">
+                        <div class="flask-icon bg-blue-500 text-white p-3 rounded-full">
+                            <i class="fas fa-flask text-xl"></i>
+                        </div>
+                        <span class="ml-3 text-xl font-bold">ChemConnect</span>
+                    </div>
+                    <p class="text-gray-400">Connecting colleges through chemistry since 2023.</p>
+                    <div class="mt-4 flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-all">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-all">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-all">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-all">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#home" class="text-gray-400 hover:text-white transition-all">Home</a></li>
+                        <li><a href="#about" class="text-gray-400 hover:text-white transition-all">About</a></li>
+                        <li><a href="#request" class="text-gray-400 hover:text-white transition-all">Request Items</a></li>
+                        <li><a href="#supply" class="text-gray-400 hover:text-white transition-all">Supply Items</a></li>
+                        <li><a href="#search" class="text-gray-400 hover:text-white transition-all">Search</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">FAQs</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Safety Guidelines</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Shipping Partners</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Pricing</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">Cookie Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-all">GDPR Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400">© 2023 ChemConnect. All rights reserved.</p>
+                <div class="mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-white transition-all mr-4">Terms</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-all mr-4">Privacy</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-all">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+
+        // FAQ accordion
+        document.querySelectorAll('.faq-question').forEach(button => {
+            button.addEventListener('click', () => {
+                const answer = button.nextElementSibling;
+                const icon = button.querySelector('i');
+                
+                // Toggle answer visibility
+                answer.classList.toggle('hidden');
+                
+                // Rotate icon
+                icon.classList.toggle('rotate-180');
+                
+                // Close other open answers in the same FAQ section
+                const parentItem = button.parentElement;
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    if (item !== parentItem) {
+                        item.querySelector('.faq-answer').classList.add('hidden');
+                        item.querySelector('.faq-question i').classList.remove('rotate-180');
+                    }
+                });
+            });
+        });
+
+        // Request form submission handling
+        document.getElementById('requestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert('Please log in to submit a request.');
+                return;
+            }
+
+            const requestData = {
+                id: Date.now(), // Unique ID for the request
+                userId: currentUser.id,
+                collegeName: document.getElementById('collegeName').value,
+                contactPerson: document.getElementById('contactPerson').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                itemType: document.getElementById('itemType').value,
+                itemDetails: document.getElementById('itemDetails').value,
+                urgency: document.getElementById('urgency').value,
+                timestamp: new Date().toISOString()
+            };
+
+            let userRequests = JSON.parse(localStorage.getItem(`chemconnect_requests_${currentUser.id}`) || '[]');
+            userRequests.push(requestData);
+            localStorage.setItem(`chemconnect_requests_${currentUser.id}`, JSON.stringify(userRequests));
+
+            // Show success message
+            document.getElementById('requestSuccess').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('requestSuccess').classList.add('hidden');
+            }, 5000);
+            
+            // Reset form
+            this.reset();
+            loadProfileData(); // Refresh profile data
+        });
+
+        // Supply form submission handling
+        document.getElementById('supplyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert('Please log in to list an item for supply.');
+                return;
+            }
+
+            const supplyData = {
+                id: Date.now(), // Unique ID for the supply item
+                userId: currentUser.id,
+                collegeName: document.getElementById('supplyCollegeName').value,
+                contactPerson: document.getElementById('supplyContactPerson').value,
+                email: document.getElementById('supplyEmail').value,
+                phone: document.getElementById('supplyPhone').value,
+                itemType: document.getElementById('supplyItemType').value,
+                itemDetails: document.getElementById('supplyItemDetails').value,
+                price: document.getElementById('supplyPrice').value || "FREE",
+                location: document.getElementById('supplyLocation').value,
+                timestamp: new Date().toISOString()
+            };
+
+            let userSupplies = JSON.parse(localStorage.getItem(`chemconnect_supplies_${currentUser.id}`) || '[]');
+            userSupplies.push(supplyData);
+            localStorage.setItem(`chemconnect_supplies_${currentUser.id}`, JSON.stringify(userSupplies));
+
+            // Also add to the general search results (dynamicItemsContainer)
+            // This part is already handled by the existing code, just ensure it uses the new supplyData
+            const newItem = document.createElement('div');
+            newItem.className = 'bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 mt-6';
+            newItem.setAttribute('data-item-type', supplyData.itemType); // Add data attribute for filtering
+            newItem.setAttribute('data-supplier', supplyData.collegeName); // Add data attribute for supplier
+            newItem.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">${supplyData.itemDetails}</h3>
+                        <p class="text-gray-600">${supplyData.itemType.charAt(0).toUpperCase() + supplyData.itemType.slice(1)} in ${supplyData.location}</p>
+                    </div>
+                    <div class="mt-2 md:mt-0 text-right">
+                        <span class="text-lg font-bold ${supplyData.price === 'FREE' ? 'text-green-600' : 'text-green-600'}">${supplyData.price === 'FREE' ? 'FREE' : '₹'+supplyData.price}</span>
+                        <p class="text-sm text-gray-500">${supplyData.collegeName}</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">${supplyData.itemType.charAt(0).toUpperCase() + supplyData.itemType.slice(1)}</span>
+                    <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">Available</span>
+                </div>
+                <a href="supplier_contact.html?supplier=${encodeURIComponent(supplyData.collegeName)}&item=${encodeURIComponent(supplyData.itemDetails)}" class="mt-4 text-blue-600 hover:text-blue-800 font-medium">Contact Supplier</a>
+            `;
+
+            // Add to the dynamic items container
+            document.getElementById('dynamicItemsContainer').prepend(newItem);
+            
+            // Show success message
+            document.getElementById('supplySuccess').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('supplySuccess').classList.add('hidden');
+            }, 5000);
+            
+            // Reset form
+            this.reset();
+            performSearch(); // Re-run search to include the new item in the visible list if filters match
+            loadProfileData(); // Refresh profile data
+        });
+
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('contactSuccess').classList.remove('hidden');
+            this.reset();
+            setTimeout(() => {
+                document.getElementById('contactSuccess').classList.add('hidden');
+            }, 5000);
+            return false;
+        });
+
+        // --- Search Functionality ---
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const searchResultsContainer = document.getElementById('searchResults'); // This is the parent of all item divs
+        const filterButtons = document.querySelectorAll('.search-filter');
+        const loadMoreButton = document.getElementById('loadMoreButton');
+
+        // Function to perform search and filter
+        function performSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            let selectedType = null;
+
+            // Determine the active filter type
+            filterButtons.forEach(button => {
+                if (button.classList.contains('active-chemical') ||
+                    button.classList.contains('active-equipment') ||
+                    button.classList.contains('active-glassware') ||
+                    button.classList.contains('active-other')) {
+                    selectedType = button.getAttribute('data-type');
+                }
+            });
+
+            // Iterate over all direct children of searchResultsContainer (static items + dynamicItemsContainer)
+            // and then over children of dynamicItemsContainer
+            const allItems = Array.from(searchResultsContainer.children).flatMap(child => {
+                if (child.id === 'dynamicItemsContainer') {
+                    return Array.from(child.children);
+                }
+                return [child];
+            }).filter(item => item.nodeType === 1); // Ensure it's an element node
+
+            allItems.forEach(item => {
+                const itemText = item.textContent.toLowerCase();
+                const itemType = item.getAttribute('data-item-type');
+
+                const matchesQuery = itemText.includes(query);
+                const matchesType = selectedType ? (itemType === selectedType) : true;
+
+                if (matchesQuery && matchesType) {
+                    item.style.display = ''; // Show the item
+                } else {
+                    item.style.display = 'none'; // Hide the item
+                }
+            });
+        }
+
+        // Event Listeners for Search Bar
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+            // Also perform search on every key stroke for live filtering
+            performSearch();
+        });
+
+        // Event Listeners for Filter Buttons
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                let isActive = false;
+
+                // Check if this button is already active
+                if (this.classList.contains(`active-${type}`)) {
+                    isActive = true;
+                }
+
+                // Remove all active classes from all filter buttons
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active-chemical', 'active-equipment', 'active-glassware', 'active-other');
+                    // Reset to default Tailwind colors
+                    const btnType = btn.getAttribute('data-type');
+                    if (btnType === 'chemical') btn.classList.replace('bg-blue-600', 'bg-blue-100');
+                    else if (btnType === 'equipment') btn.classList.replace('bg-green-600', 'bg-green-100');
+                    else if (btnType === 'glassware') btn.classList.replace('bg-purple-600', 'bg-purple-100');
+                    else if (btnType === 'other') btn.classList.replace('bg-yellow-600', 'bg-yellow-100');
+                    btn.classList.remove('text-white');
+                    if (btnType === 'chemical') btn.classList.add('text-blue-700');
+                    else if (btnType === 'equipment') btn.classList.add('text-green-700');
+                    else if (btnType === 'glassware') btn.classList.add('text-purple-700');
+                    else if (btnType === 'other') btn.classList.add('text-yellow-700');
+                });
+
+                // If the button was not active, make it active
+                if (!isActive) {
+                    this.classList.add(`active-${type}`);
+                    // Apply specific active color
+                    if (type === 'chemical') this.classList.replace('bg-blue-100', 'bg-blue-600');
+                    else if (type === 'equipment') this.classList.replace('bg-green-100', 'bg-green-600');
+                    else if (type === 'glassware') this.classList.replace('bg-purple-100', 'bg-purple-600');
+                    else if (type === 'other') this.classList.replace('bg-yellow-100', 'bg-yellow-600');
+                    this.classList.add('text-white');
+                }
+
+                performSearch(); // Re-run search with new filter state
+            });
+        });
+
+        // Load More Results (mock functionality)
+        loadMoreButton.addEventListener('click', function() {
+            alert('In a real application, more results would be loaded from a server.');
+            // For demonstration, you could add more static items here or generate them
+            // For now, it just alerts.
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    const mobileMenu = document.getElementById('mobile-menu');
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                }
+            });
+        });
+
+        // Initial search to ensure all items are visible by default
+        performSearch();
+
+    </script>
+</body>
+</html>
