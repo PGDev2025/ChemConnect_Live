@@ -188,7 +188,7 @@
             <div class="flex flex-col md:flex-row items-center">
                 <div class="md:w-1/2 mb-10 md:mb-0">
                     <h1 class="text-4xl md:text-5xl font-bold mb-6">Connecting Colleges Through Chemistry</h1>
-                    <p class="text-xl mb-8">A platform for colleges to exchange surplus chemicals and equipment at nominal costs, fostering collaboration and reducing waste.</p>
+                    <p class="text-xl mb-8">A platform for colleges to connect and arrange exchanges of surplus chemicals and equipment, fostering collaboration and reducing waste.</p>
                     <div class="flex space-x-4">
                         <a href="#request" class="bg-white text-blue-600 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-all">Request Items</a>
                         <a href="#supply" class="bg-transparent border-2 border-white hover:bg-white hover:text-blue-600 px-6 py-3 rounded-lg font-medium transition-all">Supply Items</a>
@@ -212,15 +212,15 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                 <div class="bg-gray-50 p-6 rounded-lg">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">15+</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">150+</div>
                     <div class="text-gray-600">Colleges Connected</div>
                 </div>
                 <div class="bg-gray-50 p-6 rounded-lg">
-                    <div class="text-4xl font-bold text-green-600 mb-2">25+</div>
-                    <div class="text-gray-600">Transactions Completed</div>
+                    <div class="text-4xl font-bold text-green-600 mb-2">2,500+</div>
+                    <div class="text-gray-600">Successful Connections</div>
                 </div>
                 <div class="bg-gray-50 p-6 rounded-lg">
-                    <div class="text-4xl font-bold text-purple-600 mb-2">₹50K+</div>
+                    <div class="text-4xl font-bold text-purple-600 mb-2">₹5M+</div>
                     <div class="text-gray-600">Saved by Colleges</div>
                 </div>
             </div>
@@ -284,20 +284,11 @@
                             </div>
                             <div class="flex items-start">
                                 <div class="flex-shrink-0 bg-purple-100 text-purple-600 rounded-full p-2 mr-4">
-                                    <i class="fas fa-truck"></i>
+                                    <i class="fas fa-handshake"></i>
                                 </div>
                                 <div>
-                                    <h4 class="font-medium">3. Arrange Logistics</h4>
-                                    <p class="text-gray-600 mt-1">Coordinate pickup/delivery with our logistics partners.</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0 bg-yellow-100 text-yellow-600 rounded-full p-2 mr-4">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-medium">4. Complete Transaction</h4>
-                                    <p class="text-gray-600 mt-1">Secure payment processing ensures smooth transactions.</p>
+                                    <h4 class="font-medium">3. Connect Directly</h4>
+                                    <p class="text-gray-600 mt-1">Communicate with the other institution to arrange details.</p>
                                 </div>
                             </div>
                         </div>
@@ -396,7 +387,7 @@
                 <div id="requestSuccess" class="hidden mt-6 p-4 bg-blue-100 text-blue-700 rounded-lg">
                     <div class="flex items-center">
                         <i class="fas fa-check-circle mr-2"></i>
-                        <span>Your request has been submitted successfully! We'll contact you with potential matches soon.</span>
+                        <span>Your request has been submitted successfully! Other institutions can now view your request and contact you directly.</span>
                     </div>
                 </div>
             </div>
@@ -490,7 +481,7 @@
                 <div id="supplySuccess" class="hidden mt-6 p-4 bg-green-100 text-green-700 rounded-lg">
                     <div class="flex items-center">
                         <i class="fas fa-check-circle mr-2"></i>
-                        <span>Your item has been listed successfully! We'll notify you when there are interested colleges.</span>
+                        <span>Your item has been listed successfully! Other institutions can now view your listing and contact you directly.</span>
                     </div>
                 </div>
             </div>
@@ -894,7 +885,7 @@
                                 <i class="fas fa-chevron-down transition-transform"></i>
                             </button>
                             <div class="faq-answer px-6 py-4 hidden">
-                                <p class="text-gray-600">Suppliers set their own prices, which are typically much lower than market rates (often just 10-30% of original cost). Some items may even be offered for free. Our platform encourages nominal pricing to cover costs rather than generate profit, keeping the focus on resource sharing within the academic community.</p>
+                                <p class="text-gray-600">Suppliers set their own prices, which are typically much lower than market rates (often just 10-30% of original cost). Some items may even be offered for free. The platform facilitates direct communication between institutions to agree on terms.</p>
                             </div>
                         </div>
                         
@@ -934,7 +925,7 @@
                                 <i class="fas fa-chevron-down transition-transform"></i>
                             </button>
                             <div class="faq-answer px-6 py-4 hidden">
-                                <p class="text-gray-600">Our mediation team, consisting of experienced chemistry professors from various institutions, helps resolve any disputes about item condition, specifications, or delivery. We maintain escrow for payments until both parties confirm satisfactory completion of the transaction.</p>
+                                <p class="text-gray-600">While we facilitate connections between institutions, all arrangements and agreements are made directly between the participating colleges. We recommend clear communication and documentation between parties.</p>
                             </div>
                         </div>
                     </div>
@@ -1117,6 +1108,17 @@
                 location: document.getElementById('supplyLocation').value,
                 timestamp: new Date().toISOString()
             };
+
+            // Store supplier contact info
+            let storedSuppliers = JSON.parse(localStorage.getItem('chemconnect_suppliers') || '{}');
+            storedSuppliers[supplyData.collegeName] = {
+                name: supplyData.collegeName,
+                contactPerson: supplyData.contactPerson,
+                email: supplyData.email,
+                phone: supplyData.phone,
+                address: supplyData.location
+            };
+            localStorage.setItem('chemconnect_suppliers', JSON.stringify(storedSuppliers));
 
             let userSupplies = JSON.parse(localStorage.getItem(`chemconnect_supplies_${currentUser.id}`) || '[]');
             userSupplies.push(supplyData);
