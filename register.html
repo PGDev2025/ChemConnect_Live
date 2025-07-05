@@ -24,6 +24,16 @@
             background-image: radial-gradient(circle, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
             background-size: 20px 20px;
         }
+        
+        /* Hide browser's default password visibility toggle */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
+        
+        input[type="password"]::-webkit-credentials-auto-fill-button {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="font-sans molecule-pattern bg-gray-100 flex items-center justify-center min-h-screen py-10">
@@ -90,13 +100,23 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="relative">
+                        <input type="password" id="password" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePasswordVisibility('password')">
+                            <i class="fas fa-eye-slash text-gray-500" id="passwordIcon"></i>
+                        </span>
+                    </div>
                 </div>
                 <div>
                     <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                    <input type="password" id="confirmPassword" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="relative">
+                        <input type="password" id="confirmPassword" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePasswordVisibility('confirmPassword')">
+                            <i class="fas fa-eye-slash text-gray-500" id="confirmPasswordIcon"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
             
@@ -130,13 +150,16 @@
     </div>
 
     <script>
+        // Store data in memory instead of localStorage for this demo
+        let users = [];
+        let currentUser = null;
+        
         // Check if user is already logged in
         document.addEventListener('DOMContentLoaded', function() {
             checkLoginStatus();
         });
         
         function checkLoginStatus() {
-            const currentUser = localStorage.getItem('chemconnect_current_user');
             if (currentUser) {
                 // User is already logged in, redirect to homepage
                 window.location.href = 'homepage.html';
@@ -190,13 +213,10 @@
                 return;
             }
             
-            if (formData.password.length < 6) {
-                showMessage('Password must be at least 6 characters long!', 'error');
+            if (formData.password.length < 8) {
+                showMessage('Password must be at least 8 characters long!', 'error');
                 return;
             }
-            
-            // Get existing users
-            let users = JSON.parse(localStorage.getItem('chemconnect_users') || '[]');
             
             // Check if user already exists
             if (users.find(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
@@ -220,9 +240,8 @@
                 registeredAt: new Date().toISOString()
             };
             
-            // Add to users array and save to localStorage
+            // Add to users array
             users.push(newUser);
-            localStorage.setItem('chemconnect_users', JSON.stringify(users));
             
             showMessage('Registration successful! We have received your details and will begin the verification process. You will be notified via email once your college is verified. You can now login with your credentials.', 'success');
             
@@ -236,6 +255,22 @@
         });
         
         // Add some basic form validation on input
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            
+            if (password.length > 0 && password.length < 8) {
+                this.classList.add('border-red-500');
+                this.classList.remove('focus:ring-blue-500', 'focus:border-blue-500');
+                showMessage('Password must be at least 8 characters long!', 'error');
+            } else {
+                this.classList.remove('border-red-500');
+                this.classList.add('focus:ring-blue-500', 'focus:border-blue-500');
+                if (password.length >= 8) {
+                    document.getElementById('registerMessage').innerHTML = '';
+                }
+            }
+        });
+        
         document.getElementById('confirmPassword').addEventListener('input', function() {
             const password = document.getElementById('password').value;
             const confirmPassword = this.value;
@@ -243,15 +278,18 @@
             if (confirmPassword && password !== confirmPassword) {
                 this.classList.add('border-red-500');
                 this.classList.remove('focus:ring-blue-500', 'focus:border-blue-500');
+                showMessage('Passwords do not match!', 'error');
             } else {
                 this.classList.remove('border-red-500');
                 this.classList.add('focus:ring-blue-500', 'focus:border-blue-500');
+                if (confirmPassword && password === confirmPassword) {
+                    document.getElementById('registerMessage').innerHTML = '';
+                }
             }
         });
         
         document.getElementById('collegeEmail').addEventListener('input', function() {
             const email = this.value.trim();
-            const users = JSON.parse(localStorage.getItem('chemconnect_users') || '[]');
             
             if (email && users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
                 this.classList.add('border-red-500');
@@ -263,6 +301,21 @@
                 document.getElementById('registerMessage').innerHTML = ''; // Clear message if email is unique
             }
         });
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = inputId === 'password' ? document.getElementById('passwordIcon') : document.getElementById('confirmPasswordIcon');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
+        }
     </script>
 </body>
 </html>
