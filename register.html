@@ -150,16 +150,13 @@
     </div>
 
     <script>
-        // Store data in memory instead of localStorage for this demo
-        let users = [];
-        let currentUser = null;
-        
         // Check if user is already logged in
         document.addEventListener('DOMContentLoaded', function() {
             checkLoginStatus();
         });
         
         function checkLoginStatus() {
+            const currentUser = localStorage.getItem('chemconnect_current_user');
             if (currentUser) {
                 // User is already logged in, redirect to homepage
                 window.location.href = 'homepage.html';
@@ -218,6 +215,9 @@
                 return;
             }
             
+            // Get existing users
+            let users = JSON.parse(localStorage.getItem('chemconnect_users') || '[]');
+            
             // Check if user already exists
             if (users.find(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
                 showMessage('A college with this email is already registered!', 'error');
@@ -240,8 +240,9 @@
                 registeredAt: new Date().toISOString()
             };
             
-            // Add to users array
+            // Add to users array and save to localStorage
             users.push(newUser);
+            localStorage.setItem('chemconnect_users', JSON.stringify(users));
             
             showMessage('Registration successful! We have received your details and will begin the verification process. You will be notified via email once your college is verified. You can now login with your credentials.', 'success');
             
@@ -290,6 +291,7 @@
         
         document.getElementById('collegeEmail').addEventListener('input', function() {
             const email = this.value.trim();
+            const users = JSON.parse(localStorage.getItem('chemconnect_users') || '[]');
             
             if (email && users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
                 this.classList.add('border-red-500');
